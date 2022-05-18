@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using netCore5.Services.CharacterService;
 
 namespace netCore5
 {
@@ -28,6 +30,11 @@ namespace netCore5
         {
 
             services.AddControllers();
+            //AddScoped - For every request character that comes in , it creates a new instances requested services
+            //AddTransient - new instance for every controller and every service even within the same request
+            //AddSingleton - only one instance for every request
+            services.AddScoped<ICharacterService, CharacterService>();
+            services.AddAutoMapper(typeof(Startup));
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "netCore5", Version = "v1" });
