@@ -36,6 +36,7 @@ namespace netCore5
             //AddTransient - new instance for every controller and every service even within the same request
             //AddSingleton - only one instance for every request
             services.AddScoped<ICharacterService, CharacterService>();
+            services.AddScoped<IAuthRepository, AuthRepository>();
             services.AddAutoMapper(typeof(Startup));
             services.AddSwaggerGen(c =>
             {

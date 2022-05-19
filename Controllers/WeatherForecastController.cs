@@ -7,6 +7,16 @@ using Microsoft.Extensions.Logging;
 
 namespace netCore5.Controllers
 {
+
+    //dotnet ef migrations add InitialCreate
+    //dotnet ef database update
+
+    /*Repository Patter - are classes that enscapsulates the logic required to access the data source. 
+    Centralize common data access functionality providing better maintainability and decoupling 
+    the infra or technolgy used to access databases from the domain model layer*/
+
+    /*No plain sql statements necessary
+    No database connection set up with each query*/
     [ApiController]
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase
