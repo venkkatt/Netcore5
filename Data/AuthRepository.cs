@@ -1,9 +1,12 @@
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using netCore5.Migrations;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using netCore5.Models;
-using Netcore5.Models;
 using User = Netcore5.Models.User;
 
 namespace Netcore5.Data
@@ -11,8 +14,10 @@ namespace Netcore5.Data
     public class AuthRepository : IAuthRepository
     {
         private readonly DataContext _context;
-        public AuthRepository(DataContext context)
+        private readonly IConfiguration _configuration;
+        public AuthRepository(DataContext context, IConfiguration configuration)
         {
+            _configuration = configuration;
             _context = context;
 
         }
@@ -32,7 +37,7 @@ namespace Netcore5.Data
             }
             else
             {
-                response.Data = user.Id.ToString();
+                response.Data = CreateToken(user);
             }
             return response;
         }
@@ -63,7 +68,7 @@ namespace Netcore5.Data
 
         private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
         {
-            using (var hmca = new System.Security.Cryptography.HMACSHA512())
+            using (var hmca = new HMACSHA512())
             {
                 passwordSalt = hmca.Key;
                 passwordHash = hmca.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
@@ -71,7 +76,7 @@ namespace Netcore5.Data
         }
         private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
         {
-            using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt))
+            using (var hmac = new HMACSHA512(passwordSalt))
             {
                 var computeHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
                 for (int i = 0; i < computeHash.Length; i++)
@@ -83,6 +88,30 @@ namespace Netcore5.Data
                 }
             }
             return true;
+        }
+        private string CreateToken(User user)
+        {
+            var claims = new List<Claim>{
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName)
+            };
+
+            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration.GetSection("AppSettings:Token").Value));
+
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+
+            var tokenDescriptor = new SecurityTokenDescriptor()
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = System.DateTime.Now.AddDays(1),
+                SigningCredentials = creds
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+
+
+            return tokenHandler.WriteToken(token);
         }
     }
 }
