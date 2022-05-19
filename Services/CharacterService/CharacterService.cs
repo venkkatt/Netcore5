@@ -3,16 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using netCore5.Dtos.Character;
 using netCore5.Models;
+using Netcore5.Data;
 
 namespace netCore5.Services.CharacterService
 {
     public class CharacterService : ICharacterService
     {
         private readonly IMapper _mapper;
-        public CharacterService(IMapper mapper)
+        private readonly DataContext _dataContext;
+        public CharacterService(IMapper mapper, DataContext dataContext)
         {
+            _dataContext = dataContext;
             _mapper = mapper;
 
         }
@@ -24,23 +28,27 @@ namespace netCore5.Services.CharacterService
         {
             var serviceResponse = new ServiceResponse<List<GetCharacterDTO>>();
             Character character = _mapper.Map<Character>(newCharacter);
-            character.Id = characters.Max(c => c.Id) + 1;
-            characters.Add(character);
-            serviceResponse.Data = characters.Select(c => _mapper.Map<GetCharacterDTO>(c)).ToList();
+            // character.Id = characters.Max(c => c.Id) + 1;
+            // characters.Add(character);
+            _dataContext.Characters.Add(character);
+            await _dataContext.SaveChangesAsync();
+            serviceResponse.Data = await _dataContext.Characters.Select(c => _mapper.Map<GetCharacterDTO>(c)).ToListAsync();
             return serviceResponse;
         }
 
         public async Task<ServiceResponse<List<GetCharacterDTO>>> GetAllCharacters()
         {
             var serviceResponse = new ServiceResponse<List<GetCharacterDTO>>();
-            serviceResponse.Data = characters.Select(c => _mapper.Map<GetCharacterDTO>(c)).ToList();
+            var dbCharacters = await _dataContext.Characters.ToListAsync();
+            serviceResponse.Data = dbCharacters.Select(c => _mapper.Map<GetCharacterDTO>(c)).ToList();
             return serviceResponse;
         }
 
         public async Task<ServiceResponse<GetCharacterDTO>> GetCharacterById(int id)
         {
             var serviceResponse = new ServiceResponse<GetCharacterDTO>();
-            serviceResponse.Data = _mapper.Map<GetCharacterDTO>(characters.FirstOrDefault(c => c.Id == id));
+            var dbCharacter = await _dataContext.Characters.FirstOrDefaultAsync(c => c.Id == id);
+            serviceResponse.Data = _mapper.Map<GetCharacterDTO>(dbCharacter);
             return serviceResponse;
         }
 
@@ -50,7 +58,7 @@ namespace netCore5.Services.CharacterService
             try
             {
 
-                Character character = characters.First(c => c.Id == updateCharacterDTO.Id);
+                Character character = await _dataContext.Characters.FirstOrDefaultAsync(c => c.Id == updateCharacterDTO.Id);
 
                 character.Name = updateCharacterDTO.Name;
                 character.Strength = updateCharacterDTO.Strength;
@@ -58,6 +66,8 @@ namespace netCore5.Services.CharacterService
                 character.Defence = updateCharacterDTO.Defence;
                 character.Class = updateCharacterDTO.Class;
                 character.HitPoints = updateCharacterDTO.HitPoints;
+
+                await _dataContext.SaveChangesAsync();
 
                 serviceResponse.Data = _mapper.Map<GetCharacterDTO>(character);
 
@@ -77,9 +87,10 @@ namespace netCore5.Services.CharacterService
             try
             {
 
-                Character character = characters.First(c => c.Id == id);
-                characters.Remove(character);
-                serviceResponse.Data = characters.Select(c => _mapper.Map<GetCharacterDTO>(c)).ToList();
+                Character character = await _dataContext.Characters.FirstAsync(c => c.Id == id);
+                _dataContext.Characters.Remove(character);
+                await _dataContext.SaveChangesAsync();
+                serviceResponse.Data = await _dataContext.Characters.Select(c => _mapper.Map<GetCharacterDTO>(c)).ToListAsync();
 
             }
             catch (Exception ex)
